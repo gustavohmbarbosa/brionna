@@ -18,10 +18,9 @@ fn main() {
 
 function removeComments(code) {
     return code.replace(/\/\/.*$/gm, ''); // remove // ... até o fim da linha
-  }
+}
   
-const tokenSpecs = [
-    // palavras-reservadas
+const tokenSpecs: [string, RegExp][] = [
     ['MAIN',      /\bfn main\b/],
     ['FN',        /\bfn\b/],
     ['LET',       /\blet\b/],
@@ -61,7 +60,7 @@ const tokenSpecs = [
   
     // literais
     ['NUMBER',    /\b\d+\b/],
-    ['ID',        /[a-zA-Z_]\w*\b/],    // <- corrigido
+    ['ID',        /[a-zA-Z_]\w*\b/],
   
     // espaços
     ['SKIP',      /[ \t]+/],
@@ -76,7 +75,7 @@ interface Token {
 var tokens: Token[] = [];
 
 // === Função de análise léxica ===
-function tokenize(source) {
+function tokenize(source: string) {
     const lines = removeComments(source).split('\n');
     const storedLines = [...lines];
 
