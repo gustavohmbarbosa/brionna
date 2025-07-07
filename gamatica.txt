@@ -24,21 +24,22 @@ COMANDOS
 20. <cmd-return> ::= return <expr>;
 
 EXPRESSÕES 
-21. <expr> ::= <expr-simple> [<relational-operator> <expr-simple>] 
-22. <relational-operator> ::= != | == | < | <= | > | >=
-23. <expr-simple> ::= [ - ] <term><expr-simple’>
+21. <expr> ::= <expr-simple> <expr'>
+22. <expr'> ::= <relational-operator> <expr-simple'> | ε
+23. <relational-operator> ::= != | == | < | <= | > | >=
+24. <expr-simple> ::= [ - ] <term><expr-simple’>
 
-24. <expr-simple’> ::= ( + | - | or) <term> <expr-simple’> | ε
-25. <term> ::= <factor> <term’>
-26. <term’> ::= (* | / | and) <factor> <term’> | ε 
-27. <factor> ::= <id> | <number> | <func-call> | <expr> | true | false | not <factor>
-28. <func-call> ::= <identificador > ( <args> )
-29. <args> ::= [<id> {, <id>}]
+25. <expr-simple’> ::= ( + | - | or) <term> <expr-simple’> | ε
+26. <term> ::= <factor> <term’>
+27. <term’> ::= (* | / | and) <factor> <term’> | ε 
+28. <factor> ::= <id> | <number> | <func-call> | <expr> | true | false | not <factor>
+29. <func-call> ::= <identificador > ( <args> )
+30. <args> ::= [<id> {, <id>}]
 
 NÚMEROS E IDENTIFICADORES 
-30. <id> ::= <char> <id’>
-31. <id’> ::= <char><id’> | <digit><id’> | _<id’> | ε
-32. <number> ::= <digit> <number’>
-33. <number’> ::= <digit> <number’> | ε
-34. <digit> ::= (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9) 
-35. <char> ::= (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z) 
+31. <id> ::= <char> <id’>
+32. <id’> ::= <char><id’> | <digit><id’> | _<id’> | ε
+33. <number> ::= <digit> <number’>
+34. <number’> ::= <digit> <number’> | ε
+35. <digit> ::= (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9) 
+36. <char> ::= (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z) 

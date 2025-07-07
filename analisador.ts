@@ -130,7 +130,7 @@ console.log(tokens)
 
 // Representa a estrutura de cada produção da gramática numerada
 const productions: { [key: number]: string[] } = {
-    1: ["FN", "MAIN", "LPAREN", "RPAREN", "LBRACE", "stmt", "RBRACE", "."],
+    1: ["FN", "MAIN", "LPAREN", "RPAREN", "LBRACE", "stmt", "RBRACE"],
     2: ["stmt-item", "stmt'"],
     3: ["LET", "ID", "decl-var'", "COLON", "type", "SEMI"],
     4: ["COMMA", "ID"],
@@ -168,7 +168,11 @@ const productions: { [key: number]: string[] } = {
     36: ["command"],
     37: ["BOOL"],
     38: ["ELSE", "LBRACE", "command", "RBRACE"],
-    39: [],
+    39: ["expr-simple", "expr'"],
+    40: ["REL_OP", "expr-simple"], // expr'
+    41: ["MINUS", "term", "expr-simple'"],
+    42: ["term", "expr-simple'"],
+    43: [],
 };
 
 // Tabela LL(1) simplificada baseada em tipos do lexer
@@ -179,12 +183,12 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
 
     ["stmt", new Map([
         ["LET", 2], ["PROC", 2], ["FN", 2], ["ID", 2], ["IF", 2], ["WHILE", 2],
-        ["READ", 2], ["WRITE", 2], ["RETURN", 2], ["RBRACE", 39]
+        ["READ", 2], ["WRITE", 2], ["RETURN", 2], ["RBRACE", 43]
     ])],
 
     ["stmt'", new Map([
         ["LET", 34], ["PROC", 34], ["FN", 34], ["ID", 34], ["IF", 34], ["WHILE", 34],
-        ["READ", 34], ["WRITE", 34], ["RETURN", 34], ["RBRACE", 39]
+        ["READ", 34], ["WRITE", 34], ["RETURN", 34], ["RBRACE", 43]
     ])],
 
     ["stmt-item", new Map([
@@ -202,7 +206,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
 
     ["condicional-else", new Map([
         ["ELSE", 38],
-        ["RBRACE", 39]
+        ["RBRACE", 43]
     ])],
 
     ["type", new Map([
@@ -214,23 +218,31 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ])],
 
     ["params'", new Map([
-        ["COMMA", 9], ["RPAREN", 39]
+        ["COMMA", 9], ["RPAREN", 43]
     ])],
 
     ["decl-var'", new Map([
-        ["COMMA", 4], ["COLON", 39]
+        ["COMMA", 4], ["COLON", 43]
     ])],
 
     ["expr", new Map([
-        ["MINUS", 18], ["ID", 18], ["NUMBER", 18], ["LPAREN", 18], ["TRUE", 18], ["FALSE", 18], ["NOT", 18]
+        ["MINUS", 39], ["ID", 39], ["NUMBER", 39],
+        ["LPAREN", 39], ["TRUE", 39], ["FALSE", 39], ["NOT", 39]
+    ])],
+
+    ["expr'", new Map([
+        ["REL_OP", 40],
+        ["SEMI", 43], ["RPAREN", 43]  
     ])],
 
     ["expr-simple", new Map([
-        ["MINUS", 20], ["ID", 20], ["NUMBER", 20], ["LPAREN", 20], ["TRUE", 20], ["FALSE", 20], ["NOT", 20]
+        ["MINUS", 41],
+        ["ID", 42], ["NUMBER", 42],
+        ["LPAREN", 42], ["TRUE", 42], ["FALSE", 42], ["NOT", 42]
     ])],
 
     ["expr-simple'", new Map([
-        ["PLUS", 21], ["MINUS", 22], ["OR", 23], ["SEMI", 39], ["RPAREN", 39], ["REL_OP", 39]
+        ["PLUS", 21], ["MINUS", 22], ["OR", 23], ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43]
     ])],
 
     ["term", new Map([
@@ -238,7 +250,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ])],
 
     ["term'", new Map([
-        ["MULT", 25], ["DIV", 26], ["AND", 27], ["PLUS", 39], ["MINUS", 39], ["OR", 39], ["SEMI", 39], ["RPAREN", 39], ["REL_OP", 39]
+        ["MULT", 25], ["DIV", 26], ["AND", 27], ["PLUS", 43], ["MINUS", 43], ["OR", 43], ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43]
     ])],
 
     ["factor", new Map([
