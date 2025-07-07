@@ -119,9 +119,9 @@ const productions: { [key: number]: string[] } = {
     8:  ["ID",      "COLON", "type",     "params'"],
     9:  ["COMMA",   "params"],
 
-   10: ["ID",      "command'"],
-   11: ["ASSIGN",  "expr",    "SEMI"],           
-   12: ["LPAREN",  "args",    "RPAREN", "SEMI"],
+   10: ["ID",      "command'"],                  // command → ID command'
+   11: ["ASSIGN",  "expr",    "SEMI"],           // command'
+   12: ["LPAREN",  "args",    "RPAREN", "SEMI"], // command'
 
    13: ["IF",      "LPAREN","expr","RPAREN","LBRACE","stmt","RBRACE","condicional-else"],
    14: ["WHILE",   "LPAREN","expr","RPAREN","LBRACE","stmt","RBRACE"],
@@ -159,13 +159,16 @@ const productions: { [key: number]: string[] } = {
    41: ["MINUS","term","expr-simple'"],
    42: ["term","expr-simple'"],
 
-   43: [],  // ε
+   43: [],                        // ε
 
+   // listas de argumentos
    44: ["expr",   "args'"],
    45: ["COMMA",  "expr","args'"],
 
+   // chamada em expressão (sem o ;)
    46: ["LPAREN","args","RPAREN"]
 };
+
 
 // Tabela LL(1)
 const ll1Table: Map<string, Map<string, number>> = new Map([
@@ -209,26 +212,20 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["condicional-else", new Map([["ELSE", 38], ["RBRACE", 43]])],
     ["type", new Map([["INT", 5], ["BOOL", 37]])],
 
-    ["params", new Map([
-        ["ID", 8],
-        ["RPAREN", 43]
-    ])],
-    ["params'", new Map([
-        ["COMMA", 9],
-        ["RPAREN", 43]
-    ])],
-
-    ["decl-var'", new Map([
-        ["COMMA", 4],
-        ["COLON", 43]
-    ])],
+    ["params", new Map([["ID", 8], ["RPAREN", 43]])],
+    ["params'", new Map([["COMMA", 9], ["RPAREN", 43]])],
+    ["decl-var'", new Map([["COMMA", 4], ["COLON", 43]])],
 
     ["expr", new Map([
         ["MINUS", 39], ["ID", 39], ["NUMBER", 39],
         ["LPAREN", 39], ["TRUE", 39], ["FALSE", 39],
         ["NOT", 39]
     ])],
-    ["expr'", new Map([["REL_OP", 40], ["SEMI", 43], ["RPAREN", 43]])],
+    ["expr'", new Map([
+        ["REL_OP", 40],
+        ["SEMI", 43], ["RPAREN", 43],
+        ["COMMA", 43]
+    ])],
     ["expr-simple", new Map([
         ["MINUS", 41], ["ID", 42], ["NUMBER", 42],
         ["LPAREN", 42], ["TRUE", 42], ["FALSE", 42],
@@ -236,7 +233,8 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ])],
     ["expr-simple'", new Map([
         ["PLUS", 21], ["MINUS", 22], ["OR", 23],
-        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43]
+        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43],
+        ["COMMA", 43]
     ])],
 
     ["term", new Map([
@@ -247,28 +245,31 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["term'", new Map([
         ["MULT", 25], ["DIV", 26], ["AND", 27],
         ["PLUS", 43], ["MINUS", 43], ["OR", 43],
-        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43]
+        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43],
+        ["COMMA", 43]
     ])],
 
-    // fator e factor'
     ["factor", new Map([
         ["ID", 28], ["NUMBER", 29], ["LPAREN", 30],
         ["TRUE", 31], ["FALSE", 32], ["NOT", 33]
     ])],
     ["factor'", new Map([
-        ["LPAREN", 46],      // chamada
+        ["LPAREN", 46],    // chamada
         ["MULT", 43], ["DIV", 43], ["AND", 43],
         ["PLUS", 43], ["MINUS", 43], ["OR", 43],
-        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43]
+        ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43],
+        ["COMMA", 43]
     ])],
 
-    // args podem ser vazios
     ["args", new Map([
         ["MINUS", 44], ["ID", 44], ["NUMBER", 44],
         ["LPAREN", 44], ["TRUE", 44], ["FALSE", 44],
         ["NOT", 44], ["RPAREN", 43]
     ])],
-    ["args'", new Map([["COMMA", 45], ["RPAREN", 43]])]
+    ["args'", new Map([
+        ["COMMA", 45],
+        ["RPAREN", 43]
+    ])]
 
 ]);
 
