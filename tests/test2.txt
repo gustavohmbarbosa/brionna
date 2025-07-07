@@ -1,0 +1,14 @@
+
+fn main() {
+    fn fib: int (n: int) {
+        if (n <= 1) {
+            return n;
+        } else {
+            return fib(n - 1) + fib(n - 2);
+        }
+    }
+
+    let resultado: int;
+    resultado = fib(10);
+    write(resultado);
+}
