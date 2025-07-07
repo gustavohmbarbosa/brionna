@@ -1,20 +1,5 @@
-const code = `
-fn main() {
-    let x: int;
-    let y, z: bool;
-    proc soma(a: int, b: int) {
-        write(x);
-    }
-    if (x == 10) { // teste comment
-        read(y);
-    } else {
-        write(z);
-    }
-    // teste contar linha comentário
-    // teste contar linha comentário
-    // z = @;  // erro proposital
-}
-`;
+import { readFile } from "fs";
+import { testCases } from "./tests/tests.ts";
 
 function removeComments(code) {
     return code.replace(/\/\/.*$/gm, ''); // remove // ... até o fim da linha
@@ -329,19 +314,36 @@ class Parser {
     }
 }
 
-function main() {
+function main(code: string): void {
+    // > gera tokens
     const tokens = tokenize(code);
     if (tokens.length === 0) {
         return;
     }
-    console.log(tokens)
-
+  
+    // > roda o parser
     const parser = new Parser(tokens);
     if (parser.parse()) {
-        console.log("Análise sintática concluída com sucesso!");
+      console.log('\nAnálise sintática concluída com sucesso!');
     } else {
-        console.log("Erros foram encontrados na análise sintática.");
+      console.error('\nErros foram encontrados na análise sintática.');
     }
+  }
+  
+const [, , filePath] = process.argv;
+if (!filePath) {
+    console.log("RUNNING TESTS");
+    for (const test of testCases) {
+        console.log(`\n=== ${test.name} ===`);
+        main(test.code);
+    }
+} else {
+    readFile(filePath, { encoding: 'utf-8' }, (err, data) => {
+        if (err) {
+            console.error(`Erro ao ler ou processar o arquivo: ${err.message}`);
+            process.exit(1);
+        }
+        console.log(`Lendo arquivo: ${filePath}\n`);
+        main(data);
+    });
 }
-
-main();

@@ -1,0 +1,15 @@
+fn main() {
+    let x: int;
+    let y, z: bool;
+    proc soma(a: int, b: int) {
+        write(x);
+    }
+    if (x == 10) { // teste comment
+        read(y);
+    } else {
+        write(z);
+    }
+    // teste contar linha comentário
+    // teste contar linha comentário
+    // z = @;  // erro proposital
+}
