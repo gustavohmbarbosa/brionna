@@ -1,0 +1,20 @@
+fn main() {
+    let n1, n2: int;
+    proc hello(booleano: bool, integer: int) { write(booleano); }
+    hello(bread, 12);
+
+    proc hello2(booleano: bool, integer: int) { write(booleano); }
+    hello2(bread, 1 + 1);
+
+    proc hello3() { write(booleano); }
+    hello3();
+
+    proc hello4(n1: int) { 
+        let n2: int;
+        n2 = 10;
+        hello3();
+        hello4(n2);
+        write(booleano);
+    }
+    hello4(n1);
+}
