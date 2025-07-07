@@ -276,16 +276,9 @@ class Parser {
         if (this.pos < this.tokens.length) {
             this.currentToken = this.tokens[this.pos];
         } else {
+            console.log("Fim dos tokens, definindo EOF");
             this.currentToken = { type: "$", value: "$", position: "EOF" };
         }
-    }
-
-    private match(expected: string): boolean {
-        if (this.currentToken.type === expected) {
-            this.advance();
-            return true;
-        }
-        return false;
     }
 
     public parse(): boolean {
@@ -296,7 +289,10 @@ class Parser {
             console.log("------------------");
             console.log("Pilha atual:", this.stack);
             const top = this.stack.pop();
-            if (!top) break;
+            if (!top || top === "$") {
+                console.log("Pilha vazia, finalizando análise");
+                break;
+            };
 
             console.log(`Analisando: ${top}`);
             if (this.isTerminal(top)) {
@@ -331,7 +327,7 @@ class Parser {
         const terminals = [
             "FN", "MAIN", "LET", "PROC", "INT", "BOOL", "IF", "ELSE", "WHILE", "READ", "WRITE", "TRUE", "FALSE",
             "NOT", "OR", "AND", "RETURN", "REL_OP", "ASSIGN", "PLUS", "MINUS", "MULT", "DIV",
-            "LPAREN", "RPAREN", "LBRACE", "RBRACE", "COLON", "SEMI", "COMMA", "NUMBER", "ID", ".", "$"
+            "LPAREN", "RPAREN", "LBRACE", "RBRACE", "COLON", "SEMI", "COMMA", "NUMBER", "ID"
         ];
         return terminals.includes(symbol);
     }
