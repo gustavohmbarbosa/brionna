@@ -107,66 +107,60 @@ function tokenize(source: string): Token[] {
 }
 
 // Representa a estrutura de cada produção da gramática numerada
-// === 1) PRODUCTIONS ===
 const productions: { [key: number]: string[] } = {
-    1:  ["FN",      "MAIN",  "LPAREN",  "RPAREN",  "LBRACE",  "stmt",       "RBRACE"],
-    2:  ["stmt-item","stmt'"],
-    3:  ["LET",     "ID",    "decl-var'","COLON",   "type",      "SEMI"],
-    4:  ["COMMA",   "ID"],
-    5:  ["INT"],
-    6:  ["PROC",    "ID",    "LPAREN",   "params",  "RPAREN",   "LBRACE","stmt","RBRACE"],
-    7:  ["FN",      "ID",    "COLON",    "type",    "LPAREN","params","RPAREN","LBRACE","stmt","RBRACE"],
-    8:  ["ID",      "COLON", "type",     "params'"],
-    9:  ["COMMA",   "params"],
+    1: ["FN", "MAIN", "LPAREN", "RPAREN", "LBRACE", "stmt", "RBRACE"],
+    2: ["stmt-item", "stmt'"],
+    3: ["LET", "ID", "decl-var'", "COLON", "type", "SEMI"],
+    4: ["COMMA", "ID"],
+    5: ["INT"],
+    6: ["PROC", "ID", "LPAREN", "params", "RPAREN", "LBRACE", "stmt", "RBRACE"],
+    7: ["FN", "ID", "COLON", "type", "LPAREN", "params", "RPAREN", "LBRACE", "stmt", "RBRACE"],
+    8: ["ID", "COLON", "type", "params'"],
+    9: ["COMMA", "params"],
 
-   10: ["ID",      "command'"],                  // command → ID command'
-   11: ["ASSIGN",  "expr",    "SEMI"],           // command'
-   12: ["LPAREN",  "args",    "RPAREN", "SEMI"], // command'
+    10: ["ID", "command'"],
+    11: ["ASSIGN", "expr", "SEMI"],
+    12: ["LPAREN", "args", "RPAREN", "SEMI"],
 
-   13: ["IF",      "LPAREN","expr","RPAREN","LBRACE","stmt","RBRACE","condicional-else"],
-   14: ["WHILE",   "LPAREN","expr","RPAREN","LBRACE","stmt","RBRACE"],
-   15: ["READ",    "LPAREN","ID","RPAREN","SEMI"],
-   16: ["WRITE",   "LPAREN","expr","RPAREN","SEMI"],
-   17: ["RETURN",  "expr",  "SEMI"],
+    13: ["IF", "LPAREN", "expr", "RPAREN", "LBRACE", "stmt", "RBRACE", "condicional-else"],
+    14: ["WHILE", "LPAREN", "expr", "RPAREN", "LBRACE", "stmt", "RBRACE"],
+    15: ["READ", "LPAREN", "ID", "RPAREN", "SEMI"],
+    16: ["WRITE", "LPAREN", "expr", "RPAREN", "SEMI"],
+    17: ["RETURN", "expr", "SEMI"],
 
-   18: ["expr-simple","relopExpr?"],
-   19: ["REL_OP",     "expr-simple"],
-   20: ["term",       "expr-simple'"],
-   21: ["PLUS",       "term","expr-simple'"],
-   22: ["MINUS",      "term","expr-simple'"],
-   23: ["OR",         "term","expr-simple'"],
+    18: ["expr-simple", "relopExpr?"],
+    19: ["REL_OP", "expr-simple"],
+    20: ["term", "expr-simple'"],
+    21: ["PLUS", "term", "expr-simple'"],
+    22: ["MINUS", "term", "expr-simple'"],
+    23: ["OR", "term", "expr-simple'"],
 
-   24: ["factor",     "term'"],
-   25: ["MULT",       "factor","term'"],
-   26: ["DIV",        "factor","term'"],
-   27: ["AND",        "factor","term'"],
+    24: ["factor", "term'"],
+    25: ["MULT", "factor", "term'"],
+    26: ["DIV", "factor", "term'"],
+    27: ["AND", "factor", "term'"],
 
-   28: ["ID",         "factor'"],
-   29: ["NUMBER"],
-   30: ["LPAREN",     "expr","RPAREN"],
-   31: ["TRUE"],
-   32: ["FALSE"],
-   33: ["NOT",        "factor"],
+    28: ["ID", "factor'"],
+    29: ["NUMBER"],
+    30: ["LPAREN", "expr", "RPAREN"],
+    31: ["TRUE"],
+    32: ["FALSE"],
+    33: ["NOT", "factor"],
 
-   34: ["stmt-item","stmt'"],
-   35: ["decl"],
-   36: ["command"],
-   37: ["BOOL"],
-   38: ["ELSE","LBRACE","stmt","RBRACE"],
+    34: ["stmt-item", "stmt'"],
+    35: ["decl"],
+    36: ["command"],
+    37: ["BOOL"],
+    38: ["ELSE", "LBRACE", "stmt", "RBRACE"],
 
-   39: ["expr-simple","expr'"],
-   40: ["REL_OP","expr-simple"],
-   41: ["MINUS","term","expr-simple'"],
-   42: ["term","expr-simple'"],
-
-   43: [],                        // ε
-
-   // listas de argumentos
-   44: ["expr",   "args'"],
-   45: ["COMMA",  "expr","args'"],
-
-   // chamada em expressão (sem o ;)
-   46: ["LPAREN","args","RPAREN"]
+    39: ["expr-simple", "expr'"],
+    40: ["REL_OP", "expr-simple"],
+    41: ["MINUS", "term", "expr-simple'"],
+    42: ["term", "expr-simple'"],
+    43: [], // ε
+    44: ["expr", "args'"],
+    45: ["COMMA", "expr", "args'"],
+    46: ["LPAREN", "args", "RPAREN"]
 };
 
 
@@ -254,7 +248,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
         ["TRUE", 31], ["FALSE", 32], ["NOT", 33]
     ])],
     ["factor'", new Map([
-        ["LPAREN", 46],    // chamada
+        ["LPAREN", 46], // chamda de função ou procedimento
         ["MULT", 43], ["DIV", 43], ["AND", 43],
         ["PLUS", 43], ["MINUS", 43], ["OR", 43],
         ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43],
@@ -357,16 +351,16 @@ function main(code: string): void {
     if (tokens.length === 0) {
         return;
     }
-  
+
     // > roda o parser
     const parser = new Parser(tokens);
     if (parser.parse()) {
-      console.log('\nAnálise sintática concluída com sucesso!');
+        console.log('\nAnálise sintática concluída com sucesso!');
     } else {
-      console.error('\nErros foram encontrados na análise sintática.');
+        console.error('\nErros foram encontrados na análise sintática.');
     }
-  }
-  
+}
+
 const [, , filePath] = process.argv;
 if (!filePath) {
     console.log("RUNNING TESTS");
