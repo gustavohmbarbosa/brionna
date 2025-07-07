@@ -5,39 +5,40 @@
 
 DECLARAÇÕES 
 05. <decl-var> ::= let <id> <decl-var’>  : <type> ; 
-06. <decl-var’> ::= , <id> | E
+06. <decl-var’> ::= , <id> | ε
 07. <type> ::= int | bool 
 08. <decl-proc> ::= proc <id> ( <params> ) ”{“  <stmt> “}”
 09. <decl-func> ::= fn <id>: <type>  ( <params> ) “{“ <stmt> “}”
 10. <params> ::= <id>: <type> <params’>
-11. <params’> ::= , <params> | E
+11. <params’> ::= , <params> | ε
 
 COMANDOS 
 12. <command> ::= <proc-call> | <cmd-assing> | <cmd-conditional> | <cmd-while> | <cmd-read> | <cmd-write> | <cmd-return>
 13. <cmd-assing> ::= <id> = <expr> ;
 14. <proc-call> ::= <id> ( <args> ) ;
-15. <cmd-conditional> ::= if ( <expr> ) “{“  <comando> “}” [else “{“ <comando> “}”] 
-16. <cmd-while> ::= while ( <expr> ) “{“ <comando> ”}”
-17. <cmd-read> ::= read ( <id> ) ;
-18. <cmd-write> ::= write ( <id> ) ;
-19. <cmd-return> ::= return <expr>;
+15. <cmd-conditional> ::= if ( <expr> ) “{“  <comando> “}” <conditional-else> 
+16. <conditional-else> ::= else “{“ <comando> “}” | ε
+17. <cmd-while> ::= while ( <expr> ) “{“ <comando> ”}”
+18. <cmd-read> ::= read ( <id> ) ;
+19. <cmd-write> ::= write ( <id> ) ;
+20. <cmd-return> ::= return <expr>;
 
 EXPRESSÕES 
-20. <expr>::= <expr-simple> [<relational-operator> <expr-simple>] 
-21. <relational-operator> ::= != | == | < | <= | > | >=
-22. <expr-simple> ::= [ - ] <term><expr-simple’>
+21. <expr> ::= <expr-simple> [<relational-operator> <expr-simple>] 
+22. <relational-operator> ::= != | == | < | <= | > | >=
+23. <expr-simple> ::= [ - ] <term><expr-simple’>
 
-23. <expr-simple’> ::= ( + | - | or) <term> <expr-simple’> | E
-24. <term>::= <factor> <term’>
-25. <term’>::= (* | / | and) <factor> <term’> | E 
-26. <factor> ::= <id> | <number> | <func-call> | <expr> | true | false | not <factor>
-27. <func-call> ::= <identificador > ( <args> )
-28.<args> ::= [<id> {, <id>}]
+24. <expr-simple’> ::= ( + | - | or) <term> <expr-simple’> | ε
+25. <term> ::= <factor> <term’>
+26. <term’> ::= (* | / | and) <factor> <term’> | ε 
+27. <factor> ::= <id> | <number> | <func-call> | <expr> | true | false | not <factor>
+28. <func-call> ::= <identificador > ( <args> )
+29. <args> ::= [<id> {, <id>}]
 
 NÚMEROS E IDENTIFICADORES 
-29. <id> ::= <char> <id’>
-30. <id’> ::= <char><id’> | <digit><id’> | _<id’> | E
-31. <number> ::= <digit> <number’>
-32. <number’> ::= <digit> <number’> | E
-33. <digit> ::= (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9) 
-34. <char> ::= (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z) 
+30. <id> ::= <char> <id’>
+31. <id’> ::= <char><id’> | <digit><id’> | _<id’> | ε
+32. <number> ::= <digit> <number’>
+33. <number’> ::= <digit> <number’> | ε
+34. <digit> ::= (0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9) 
+35. <char> ::= (a|b|c|d|e|f|g|h|i|j|k|l|m|n|o|p|q|r|s|t|u|v|w|x|y|z|A|B|C|D|E|F|G|H|I|J|K|L|M|N|O|P|Q|R|S|T|U|V|W|X|Y|Z) 
