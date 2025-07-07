@@ -73,12 +73,10 @@ interface Token {
     position: string
 }
 
-var tokens: Token[] = [];
-
-// === Função de análise léxica ===
-function tokenize(source: string) {
+// Função de análise léxica
+function tokenize(source: string): Token[] {
+    var tokens: Token[] = [];
     const lines = removeComments(source).split('\n');
-    const storedLines = [...lines];
 
     for (let lineNum = 0; lineNum < lines.length; lineNum++) {
         const line = lines[lineNum];
@@ -103,7 +101,7 @@ function tokenize(source: string) {
                 console.error(`Erro léxico na linha ${lineNum + 1}, coluna ${pos + 1}: caractere inválido "${errorChar}"`);
                 console.error('> ' + line);
                 console.error('  ' + ' '.repeat(pos) + '^');
-                return;
+                return [];
             }
 
             if (tokenType !== 'SKIP') {
@@ -120,13 +118,8 @@ function tokenize(source: string) {
         }
     }
 
-    return storedLines;
+    return tokens;
 }
-
-// === Executa ===
-tokenize(code);
-console.log(tokens)
-
 
 // Representa a estrutura de cada produção da gramática numerada
 const productions: { [key: number]: string[] } = {
@@ -175,7 +168,7 @@ const productions: { [key: number]: string[] } = {
     43: [],
 };
 
-// Tabela LL(1) simplificada baseada em tipos do lexer
+// Tabela LL(1)
 const ll1Table: Map<string, Map<string, number>> = new Map([
     ["program", new Map([
         ["FN", 1]
@@ -258,7 +251,6 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ])]
 ]);
 
-
 // Pilha de análise sintática LL(1)
 class Parser {
     private tokens: Token[];
@@ -305,7 +297,7 @@ class Parser {
             } else {
                 const rule = this.getProduction(top, this.currentToken.type);
                 if (!rule) {
-                    this.error(`Erro de sintaxe: inesperado '${this.currentToken.type}' no contexto de '${top}'`);
+                    this.error(`Token inesperado '${this.currentToken.type}' no contexto de '${top}'`);
                     return false;
                 }
                 const production = productions[rule];
@@ -337,11 +329,19 @@ class Parser {
     }
 }
 
+function main() {
+    const tokens = tokenize(code);
+    if (tokens.length === 0) {
+        return;
+    }
+    console.log(tokens)
 
-const parser = new Parser(tokens);
-
-if (parser.parse()) {
-    console.log("Análise sintática concluída com sucesso!");
-} else {
-    console.log("Erros foram encontrados na análise sintática.");
+    const parser = new Parser(tokens);
+    if (parser.parse()) {
+        console.log("Análise sintática concluída com sucesso!");
+    } else {
+        console.log("Erros foram encontrados na análise sintática.");
+    }
 }
+
+main();
