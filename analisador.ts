@@ -203,7 +203,13 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
         ["LPAREN", 12]
     ])],
 
-    ["condicional-else", new Map([["ELSE", 38], ["RBRACE", 43]])],
+    ["condicional-else", new Map([
+        ["ELSE", 38], ["RBRACE", 43],
+        ["LET", 43], ["PROC", 43], ["FN", 43],
+        ["ID", 43], ["IF", 43], ["WHILE", 43],
+        ["READ", 43], ["WRITE", 43], ["RETURN", 43],
+    ])],
+
     ["type", new Map([["INT", 5], ["BOOL", 37]])],
 
     ["params", new Map([["ID", 8], ["RPAREN", 43]])],

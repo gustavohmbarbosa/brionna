@@ -11,5 +11,5 @@ fn main() {
     }
     // teste contar linha comentário
     // teste contar linha comentário
-    // z = @;  // erro proposital
+    z = @;  // erro proposital
 }
