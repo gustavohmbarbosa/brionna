@@ -58,6 +58,16 @@ interface Token {
     position: string
 }
 
+interface SymbolEntry {
+  token: Token
+  category?: "variable" | "function" | "procedure" | "parameter"
+  returnType?: string
+  params?: SymbolEntry[]
+  scope?: string; // "global" ou nome da função/procedimento
+}
+
+const symbolTable: SymbolEntry[] = [];
+
 // Função de análise léxica
 function tokenize(source: string): Token[] {
     var tokens: Token[] = [];
@@ -92,11 +102,19 @@ function tokenize(source: string): Token[] {
             if (tokenType !== 'SKIP') {
                 let position = `${lineNum + 1}:${pos + 1}`;
                 console.log(`${position}  ${tokenType.padEnd(10)} ${match}`);
-                tokens.push({
+
+                const token = {
                     value: match,
                     type: tokenType,
                     position: position
-                });
+                };
+                tokens.push(token);
+                
+                if (tokenType === 'ID') {
+                    symbolTable.push({
+                        token: token
+                    });
+                }
             }
 
             pos += match.length;
@@ -162,7 +180,6 @@ const productions: { [key: number]: string[] } = {
     45: ["COMMA", "expr", "args'"],
     46: ["LPAREN", "args", "RPAREN"]
 };
-
 
 // Tabela LL(1)
 const ll1Table: Map<string, Map<string, number>> = new Map([
@@ -254,7 +271,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
         ["TRUE", 31], ["FALSE", 32], ["NOT", 33]
     ])],
     ["factor'", new Map([
-        ["LPAREN", 46], // chamda de função ou procedimento
+        ["LPAREN", 46],
         ["MULT", 43], ["DIV", 43], ["AND", 43],
         ["PLUS", 43], ["MINUS", 43], ["OR", 43],
         ["SEMI", 43], ["RPAREN", 43], ["REL_OP", 43],
