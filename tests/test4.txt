@@ -14,7 +14,7 @@ fn main() {
         n2 = 10;
         hello3();
         hello4(n2);
-        write(booleano);
+        write(98);
     }
     hello4(n1);
 }

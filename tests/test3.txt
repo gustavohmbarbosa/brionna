@@ -1,6 +1,6 @@
 fn main() {
     fn fib: int (n: int, a: bool) {
-        let a, b: int;
+        let b: int;
         let tmp, i: int;
         a = 0;
         b = 1;
@@ -26,6 +26,4 @@ fn main() {
     let resultado: int;
     let booleano: bool;
     booleano = true;
-    fib(10);
-    write(true);
 }
