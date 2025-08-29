@@ -6,7 +6,7 @@ fn main() {
     proc hello2(booleano: bool, integer: int) { write(booleano); }
     hello2(bread, 1 + 1);
 
-    proc hello3() { write(booleano); }
+    proc hello3() { write(booleano); } // error
     hello3();
 
     proc hello4(n1: int) { 

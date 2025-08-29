@@ -1,0 +1,42 @@
+fn main() {
+    fn fib: int (n: int, a: int) {
+        let b: int;
+        let tmp, i: int;
+        a = 0;
+        b = 1;
+        i = 0;
+        let x: int;
+        x = 1;
+
+        proc procedimento() {
+            
+        }
+
+        while (i <= n) {
+            tmp = a;
+            a = b;
+            b = tmp + b / 3;
+            i = i + 1;
+
+            if (a == 1) {
+                break;
+            } else {
+                procedimento();
+                continue;
+            }
+        }
+
+        if (x < 0) {
+
+        }
+
+        procedimento();
+    }
+
+    let resultado: int;
+    let booleano: bool;
+    booleano = true;
+    booleano = false;
+
+    resultado = booleano; // error
+}

@@ -1,0 +1,27 @@
+fn main() {
+    while (true) {
+        let cond: bool;
+        cond = false;
+        if (cond) {
+            break;
+        } else {
+            continue;
+        }
+
+        while (true) {
+            let cond: bool;
+            cond = false;
+            if (cond) {
+                break;
+            } else {
+                continue;
+            }
+        }
+    }
+
+    proc teste() {
+        break; // error
+    }
+
+    continue; // error
+}

@@ -1,5 +1,6 @@
 // analisador.ts — Parser LL(1) + Semântica dirigida por sintaxe
 // Atualizações:
+// - Validação semântica: break/continue só dentro de laço while.
 // - Padronização de erros SEMÂNTICOS com posição (linha:coluna), semelhante ao sintático.
 // - Helper semError(message, tok?) para formatar e lançar erros.
 // - Todas as checagens semânticas chamam semError com o token relevante.
@@ -30,6 +31,8 @@ const tokenSpecs: [string, RegExp][] = [
   ["OR", /\bor\b/],
   ["AND", /\band\b/],
   ["RETURN", /\breturn\b/],
+  ["BREAK", /\bbreak\b/],
+  ["CONTINUE", /\bcontinue\b/],
   ["REL_OP", /!=|==|<=|>=|<|>/],
   ["ASSIGN", /=/],
   ["PLUS", /\+/],
@@ -158,6 +161,9 @@ const productions: { [key: number]: string[] } = {
   44: ["expr", "args'"],
   45: ["COMMA", "expr", "args'"],
   46: ["LPAREN", "args", "RPAREN"],
+
+  47: ["BREAK", "SEMI"],
+  48: ["CONTINUE", "SEMI"],
 };
 
 /* ===================== TABELA LL(1) ===================== */
@@ -168,6 +174,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["LET", 2], ["PROC", 2], ["FN", 2],
     ["ID", 2], ["IF", 2], ["WHILE", 2],
     ["READ", 2], ["WRITE", 2], ["RETURN", 2],
+    ["BREAK", 2], ["CONTINUE", 2],
     ["RBRACE", 43],
   ])],
 
@@ -175,6 +182,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["LET", 34], ["PROC", 34], ["FN", 34],
     ["ID", 34], ["IF", 34], ["WHILE", 34],
     ["READ", 34], ["WRITE", 34], ["RETURN", 34],
+    ["BREAK", 34], ["CONTINUE", 34],
     ["RBRACE", 43],
   ])],
 
@@ -182,6 +190,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["LET", 35], ["PROC", 35], ["FN", 35],
     ["ID", 36], ["IF", 36], ["WHILE", 36],
     ["READ", 36], ["WRITE", 36], ["RETURN", 36],
+    ["BREAK", 36], ["CONTINUE", 36],
   ])],
 
   ["decl", new Map([["LET", 3], ["PROC", 6], ["FN", 7]])],
@@ -189,6 +198,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
   ["command", new Map([
     ["ID", 10], ["IF", 13], ["WHILE", 14],
     ["READ", 15], ["WRITE", 16], ["RETURN", 17],
+    ["BREAK", 47], ["CONTINUE", 48],
   ])],
   ["command'", new Map([["ASSIGN", 11], ["LPAREN", 12]])],
 
@@ -197,6 +207,7 @@ const ll1Table: Map<string, Map<string, number>> = new Map([
     ["LET", 43], ["PROC", 43], ["FN", 43],
     ["ID", 43], ["IF", 43], ["WHILE", 43],
     ["READ", 43], ["WRITE", 43], ["RETURN", 43],
+    ["BREAK", 43], ["CONTINUE", 43],
   ])],
 
   ["type", new Map([["INT", 5], ["BOOL", 37]])],
@@ -279,8 +290,6 @@ class SymTable {
   push() { this.stack.push(new Scope()); }
   pop() { this.stack.pop(); }
   add(sym: Sym) { this.stack[this.stack.length - 1].add(sym); }
-
-  // agora aceita um token de uso para formatar a posição ao faltar símbolo
   lookup(name: string): Sym | undefined {
     for (let i = this.stack.length - 1; i >= 0; i--) {
       const s = this.stack[i].get(name);
@@ -303,6 +312,8 @@ class SemanticObserver {
 
   private _tokAt: (i: number) => Token | undefined;
   private inFormalParams: null | "func" | "proc" = null;
+
+  private loopDepth = 0;
 
   constructor(tokAt: (i: number) => Token | undefined) {
     this._tokAt = tokAt; // absoluto
@@ -362,10 +373,9 @@ class SemanticObserver {
     }
     for (let k = 0; k < params.length; k++) {
       if (params[k].type !== argTypes[k]) {
-        // Tenta pegar posição do início do argumento k
         this.semError(
           `argumento #${k + 1} de '${calSym!.name}' incompatível. Esperado ${params[k].type}, obtido ${argTypes[k]}`,
-          this._tokAt(pos) // melhor esforço: posição do id da função
+          this._tokAt(pos) // posição do id da função (melhor esforço)
         );
       }
     }
@@ -471,6 +481,10 @@ class SemanticObserver {
   onLBRACE() { this.blockDepth++; this.st.push(); }
   onRBRACE() { this.blockDepth--; this.st.pop(); if (this.blockDepth === 0) { this.endFNbody(); this.endPROCbody(); } }
 
+  // controle de laços
+  onWhileEnter() { this.loopDepth++; }
+  onWhileExit() { if (this.loopDepth > 0) this.loopDepth--; }
+
   // program
   onProgramHeaderSeen() { this.st.add({ name: "main", kind: "procedure", params: [] }); }
 
@@ -569,6 +583,13 @@ class SemanticObserver {
     if (sym!.kind !== "procedure") this.semError(`'${nameTok.value}' não é procedimento`, nameTok);
   }
 
+  onBREAK(tok: Token) {
+    if (this.loopDepth <= 0) this.semError("'break' fora de laço", tok);
+  }
+  onCONTINUE(tok: Token) {
+    if (this.loopDepth <= 0) this.semError("'continue' fora de laço", tok);
+  }
+
   onMaybeCloseExpression(parser: { pos: number; tokens: Token[] }) {
     if (!this.exprMode) return;
     const cur = parser.tokens[parser.pos];
@@ -598,6 +619,9 @@ class Parser {
 
   // profundidade de parênteses da lista formal (fn/proc)
   private formalDepth = 0;
+
+  // rastreamento do tipo de bloco para saber quando sair de while
+  private blockKindStack: Array<"func" | "proc" | "if" | "while" | null> = [];
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
@@ -644,13 +668,14 @@ class Parser {
     return null;
   }
 
-  private classifyHeaderBeforeLBrace(pos: number): "func" | "proc" | "ctrl" | null {
+  private classifyHeaderBeforeLBrace(pos: number): "func" | "proc" | "if" | "while" | null {
     const lp = this.findOpeningLParenForBlock(pos);
     if (lp === null) return null;
     const before = this.tokens[lp - 1];
     if (!before) return null;
 
-    if (before.type === "IF" || before.type === "WHILE") return "ctrl";
+    if (before.type === "IF") return "if";
+    if (before.type === "WHILE") return "while";
     if (before.type === "INT" || before.type === "BOOL") return "func";
 
     if (before.type === "ID") {
@@ -756,8 +781,17 @@ class Parser {
 
             this.sem.onLBRACE();
             this.sem.injectParamsToScope();
+
+            // rastrear o tipo de bloco; se 'while', entra em laço
+            this.blockKindStack.push(kind ?? null);
+            if (kind === "while") this.sem.onWhileEnter();
           }
-          if (top === "RBRACE") this.sem.onRBRACE();
+
+          if (top === "RBRACE") {
+            this.sem.onRBRACE();
+            const kind = this.blockKindStack.pop() ?? null;
+            if (kind === "while") this.sem.onWhileExit();
+          }
 
           // ATRIBUIÇÃO
           if (top === "ASSIGN") {
@@ -767,6 +801,10 @@ class Parser {
 
           // RETURN
           if (top === "RETURN") this.sem.startRETURNexpr(this.pos + 1);
+
+          // BREAK/CONTINUE (checagem semântica imediata)
+          if (top === "BREAK")    this.sem.onBREAK(tk);
+          if (top === "CONTINUE") this.sem.onCONTINUE(tk);
 
           // chamada de procedimento como comando
           if (top === "ID" && next?.type === "LPAREN") {
@@ -812,7 +850,7 @@ class Parser {
   private isTerminal(symbol: string): boolean {
     const terminals = [
       "FN", "MAIN", "LET", "PROC", "INT", "BOOL", "IF", "ELSE", "WHILE", "READ", "WRITE", "TRUE", "FALSE",
-      "NOT", "OR", "AND", "RETURN", "REL_OP", "ASSIGN", "PLUS", "MINUS", "MULT", "DIV",
+      "NOT", "OR", "AND", "RETURN", "BREAK", "CONTINUE", "REL_OP", "ASSIGN", "PLUS", "MINUS", "MULT", "DIV",
       "LPAREN", "RPAREN", "LBRACE", "RBRACE", "COLON", "SEMI", "COMMA", "NUMBER", "ID",
     ];
     return terminals.includes(symbol);
