@@ -1,3 +1,5 @@
+import { writeFileSync } from "fs";
+import { CodegenObserver } from "../codeGen";
 import { ll1Table, productions } from "../gramma";
 import { Token } from "../types";
 import { SemanticObserver } from "./semantic";
@@ -9,19 +11,24 @@ export class SyntacticParser {
   public currentToken: Token;
   private stack: string[] = [];
   private sem: SemanticObserver;
+  private codegen: CodegenObserver;
 
   // profundidade de parênteses da lista formal (fn/proc)
   private formalDepth = 0;
 
-  // rastreamento do tipo de bloco para saber quando sair de while
+  // rastreamento do tipo de bloco para saber quando sair de while/if/func/proc
   private blockKindStack: Array<"func" | "proc" | "if" | "while" | null> = [];
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
     this.currentToken = this.tokens[0];
-    const tokAt = (i: number) => this.tokens[i]; // absoluto
+
+    const tokAt = (i: number) => this.tokens[i]; // acesso absoluto usado pelos observadores
     this.sem = new SemanticObserver(tokAt);
+
+    this.codegen = new CodegenObserver(tokAt);
   }
+
 
   private advance() {
     this.pos++;
@@ -100,9 +107,16 @@ export class SyntacticParser {
           const tk = this.currentToken;
           const next = this.tokens[this.pos + 1];
 
-          if (top === "FN" && next?.type === "MAIN") this.sem.onProgramHeaderSeen();
+          // FN main
+          if (top === "FN" && next?.type === "MAIN") {
+            this.sem.onProgramHeaderSeen();
+            this.codegen.onProgramHeaderSeen();
+          }
+
+          // LET
           if (top === "LET") this.sem.onStartDeclVars();
 
+          // ID em contextos diversos
           if (top === "ID") {
             const ahead = this.tokens.slice(this.pos);
             const colonIdx = ahead.findIndex((x) => x.type === "COLON");
@@ -110,38 +124,60 @@ export class SyntacticParser {
             if (colonIdx !== -1 && (semiIdx === -1 || colonIdx < semiIdx)) {
               try { this.sem.addVarId(tk); } catch {}
             }
+
+            // READ(ID) — quando consumimos o ID dentro de read(...)
+            if (this.tokens[this.pos - 1]?.type === "LPAREN" && this.tokens[this.pos - 2]?.type === "READ") {
+              this.sem.onREAD(tk);
+              this.codegen.onREAD(tk);
+            }
           }
 
           // tipo após ':'
           if ((top === "INT" || top === "BOOL") && this.tokens[this.pos - 1]?.type === "COLON") {
-            this.sem.onDeclVarType(tk); // efetiva 'let' se for o caso
+            // efetiva 'let' se for o caso
+            this.sem.onDeclVarType(tk);
 
             // detectar fn id : type (...)
             const pre3 = this.tokens[this.pos - 3];       // ... FN está 3 atrás do tipo
             if (pre3?.type === "FN") {
               const nameTok = this.tokens[this.pos - 2];  // ... ID do nome da função
-              if (nameTok?.type === "ID") this.sem.onStartFunc(nameTok, tk);
+              if (nameTok?.type === "ID") {
+                this.sem.onStartFunc(nameTok, tk);
+                this.codegen.onStartFunc(nameTok, tk);
+              }
             }
           }
 
-          // início de PROC
+          // início de PROC (consumo do ID após 'proc')
           if (top === "ID" && this.tokens[this.pos - 1]?.type === "PROC") {
             this.sem.onStartProc(tk);
+            this.codegen.onStartProc(tk);
           }
 
-          // parâmetro formal: id : type  (só será aceito se inFormalParams estiver ativo)
+          // parâmetro formal: id : type  (só será aceito se inFormalParams estiver ativo no semântico)
           if (top === "ID" && next?.type === "COLON") {
             const typeTok = this.tokens[this.pos + 2];
             if (typeTok && (typeTok.type === "INT" || typeTok.type === "BOOL")) {
               this.sem.onParamPiece(tk, typeTok);
+              this.codegen.onParamPiece(tk, typeTok); // no-op no codegen, mas mantém simetria
             }
           }
 
           // LPAREN
           if (top === "LPAREN") {
-            if (this.tokens[this.pos - 1]?.type === "IF")    this.sem.startIfExpr(this.pos + 1);
-            if (this.tokens[this.pos - 1]?.type === "WHILE") this.sem.startWhileExpr(this.pos + 1);
-            if (this.tokens[this.pos - 1]?.type === "WRITE") this.sem.startWRITEexpr(this.pos + 1);
+            // Início das expressões de controle/escrita
+            if (this.tokens[this.pos - 1]?.type === "IF") {
+              this.sem.startIfExpr(this.pos + 1);
+              this.codegen.startIfExpr(this.pos + 1);
+            }
+            if (this.tokens[this.pos - 1]?.type === "WHILE") {
+              this.sem.startWhileExpr(this.pos + 1);
+              this.codegen.startWhileExpr(this.pos + 1);
+            }
+            if (this.tokens[this.pos - 1]?.type === "WRITE") {
+              this.sem.startWRITEexpr(this.pos + 1);
+              this.codegen.startWRITEexpr(this.pos + 1);
+            }
 
             // ENTRADA em parâmetros formais de PROC: "proc ID ( ... )"
             if (this.tokens[this.pos - 1]?.type === "ID" && this.tokens[this.pos - 2]?.type === "PROC") {
@@ -166,40 +202,88 @@ export class SyntacticParser {
             }
           }
 
+          // ELSE — abre ramo else no gerador
+          if (top === "ELSE") {
+            this.codegen.beginElseBlock();
+          }
+
           // abertura de bloco '{'
           if (top === "LBRACE") {
             const kind = this.classifyHeaderBeforeLBrace(this.pos);
-            if (kind === "func") this.sem.commitFuncBeforeBody();
-            else if (kind === "proc") this.sem.commitProcBeforeBody();
 
+            // ao abrir corpo de função/procedimento, "fixar" a assinatura antes do corpo
+            if (kind === "func") {
+              this.sem.commitFuncBeforeBody();
+              this.codegen.commitFuncBeforeBody();
+            } else if (kind === "proc") {
+              this.sem.commitProcBeforeBody();
+              this.codegen.commitProcBeforeBody();
+            }
+
+            // abrir novo escopo
             this.sem.onLBRACE();
-            this.sem.injectParamsToScope();
+            this.codegen.onLBRACE();
 
-            // rastrear o tipo de bloco; se 'while', entra em laço
+            // injetar parâmetros formais no escopo (semântico) — no codegen é no-op
+            this.sem.injectParamsToScope();
+            this.codegen.injectParamsToScope();
+
+            // rastrear o tipo de bloco
             this.blockKindStack.push(kind ?? null);
-            if (kind === "while") this.sem.onWhileEnter();
+
+            // marcas de entrada em bloco específico
+            if (kind === "if") {
+              // rótulo do bloco then
+              this.codegen.enterIfThenBlock();
+            } else if (kind === "while") {
+              // marca entrada do corpo do laço
+              this.sem.onWhileEnter();
+              this.codegen.enterWhileBody();
+            }
           }
 
+          // fechamento de bloco '}'
           if (top === "RBRACE") {
             this.sem.onRBRACE();
+            this.codegen.onRBRACE();
+
             const kind = this.blockKindStack.pop() ?? null;
-            if (kind === "while") this.sem.onWhileExit();
+            if (kind === "while") {
+              // saída do laço
+              this.sem.onWhileExit();
+              // codegen já fecha while em onRBRACE
+            } else if (kind === "if") {
+              // finaliza estrutura if/else (emite label de fim quando há else)
+              this.codegen.endIfAll();
+            } else if (kind === "func") {
+              // fechamento do corpo de função
+              this.codegen.endFNbody();
+            } else if (kind === "proc") {
+              // fechamento do corpo de procedimento
+              this.codegen.endPROCbody();
+            }
           }
 
           // ATRIBUIÇÃO
           if (top === "ASSIGN") {
             const targetTok = this.tokens[this.pos - 1];
-            if (targetTok?.type === "ID") this.sem.beginAssign(targetTok, this.pos + 1);
+            if (targetTok?.type === "ID") {
+              this.sem.beginAssign(targetTok, this.pos + 1);
+              this.codegen.beginAssign(targetTok, this.pos + 1);
+            }
           }
 
           // RETURN
-          if (top === "RETURN") this.sem.startRETURNexpr(this.pos + 1);
+          if (top === "RETURN") {
+            this.sem.startRETURNexpr(this.pos + 1);
+            this.codegen.startRETURNexpr(this.pos + 1);
+          }
 
           // BREAK/CONTINUE (checagem semântica imediata)
           if (top === "BREAK")    this.sem.onBREAK(tk);
           if (top === "CONTINUE") this.sem.onCONTINUE(tk);
 
-          // chamada de procedimento como comando
+          // chamada de procedimento como comando (ID '(' ... ')' ';')
           if (top === "ID" && next?.type === "LPAREN") {
             const prev = this.tokens[this.pos - 1];
             const allowAsCommandAfter = ["SEMI","LBRACE","RBRACE","IF","ELSE","WHILE","READ","WRITE","RETURN","LET"];
@@ -208,13 +292,19 @@ export class SyntacticParser {
 
             const rparenPos = this.findMatchingRParen(this.pos + 1);
             const followsSemi = rparenPos !== null && this.tokens[rparenPos + 1]?.type === "SEMI";
-            if (prevIsCmdBoundary && !isDeclHeader && followsSemi) this.sem.startProcCallStmt(tk);
+            if (prevIsCmdBoundary && !isDeclHeader && followsSemi) {
+              this.sem.startProcCallStmt(tk);
+              this.codegen.startProcCallStmt(tk);
+            }
           }
 
-          // fechamento de expressão
-          if (top === "SEMI" || top === "RPAREN") this.sem.onMaybeCloseExpression(this);
+          // fechamento de expressão para sinks (assign/write/return/if/while)
+          if (top === "SEMI" || top === "RPAREN") {
+            this.sem.onMaybeCloseExpression(this);
+            this.codegen.onMaybeCloseExpression(this);
+          }
 
-          // consumir
+          // consumir token
           this.advance();
         } else {
           this.error(`Esperado '${top}' mas encontrado '${this.currentToken.type}'`);
@@ -232,7 +322,17 @@ export class SyntacticParser {
         }
       }
     }
-    return this.currentToken.type === "$";
+
+    if (this.currentToken.type === "$") {
+      const tac = this.codegen.getProgram();
+
+      writeFileSync("resultado_TAC.txt", tac.toString(), { encoding: "utf-8" });
+      console.log("Código de 3 endereços salvo em resultado_TAC.txt");
+
+      return true;
+    }
+
+    return false;
   }
 
   private getProduction(nonTerminal: string, lookahead: string): number | undefined {
