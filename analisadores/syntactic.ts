@@ -326,7 +326,8 @@ export class SyntacticParser {
     if (this.currentToken.type === "$") {
       const tac = this.codegen.getProgram();
 
-      writeFileSync("resultado_TAC.txt", tac.toString(), { encoding: "utf-8" });
+      writeFileSync("resultado/code.txt", "", { encoding: "utf-8" });
+      writeFileSync("resultado/code.txt", tac.toString(), { encoding: "utf-8" });
       console.log("Código de 3 endereços salvo em resultado_TAC.txt");
 
       return true;

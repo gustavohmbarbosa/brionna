@@ -1,8 +1,28 @@
-import { readFile } from "fs";
+import { appendFileSync, mkdirSync, readFile, writeFileSync } from "fs";
 import { testCases } from "./tests/tests.ts";
 import { tokenize } from "./analisadores/lexic.ts";
 import { SyntacticParser } from "./analisadores/syntactic.ts";
 
+mkdirSync("resultado", { recursive: true });
+writeFileSync("resultado/log.txt", "", { encoding: "utf-8" });
+// helper para salvar em arquivo
+function logToFile(type: "log" | "error", message: any, ...optional: any[]) {
+  const text = `[${type.toUpperCase()}] ${message} ${optional.map(x => String(x)).join(" ")}\n`;
+  appendFileSync("resultado/log.txt", text, { encoding: "utf-8" });
+}
+
+// sobrescreve console.log e console.error
+const oldLog = console.log;
+console.log = (msg?: any, ...opt: any[]) => {
+  oldLog(msg, ...opt);
+  logToFile("log", msg, ...opt);
+};
+
+const oldErr = console.error;
+console.error = (msg?: any, ...opt: any[]) => {
+  oldErr(msg, ...opt);
+  logToFile("error", msg, ...opt);
+};
 
 function main(code: string): void {
   const tokens = tokenize(code);
