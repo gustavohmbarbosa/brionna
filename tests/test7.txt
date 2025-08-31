@@ -1,0 +1,38 @@
+fn main() {
+    proc teste() {
+        let aaa: int;
+        read(aaa);
+    }
+
+    fn doSomething: int (param1: int, param2: bool, param3: int) {
+        let temp: int;
+        temp = param1 + param3;
+        temp = temp / param1;
+
+        let i: int;
+        i = 0;
+        while (param2) {
+            write(i);
+            i = i+1;
+
+            if (i == 12) {
+                break;
+            }
+        }
+
+        return temp + i;
+    }
+
+    let t1: int;
+    let t2: int;
+    let t3: bool;
+
+    teste();
+    t2 = doSomething(t1, t3, t2);
+
+    if (t1 > t2) {
+        teste();
+    } else {
+        teste();
+    }
+}

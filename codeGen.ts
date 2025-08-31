@@ -1,30 +1,4 @@
-import type { Token } from "./types";
-
-type TACValue = string | number | boolean;
-
-export type TACOp =
-  | "assign" | "add" | "sub" | "mul" | "div"
-  | "and" | "or" | "not"
-  | "cmp" // result = (arg1 relop arg2) => 0/1
-  | "ifgoto" | "goto" | "label"
-  | "read" | "write"
-  | "param" | "call" | "ret"
-  | "enter" | "leave"; // marcações de início/fim de função/procedimento
-
-export interface TACInstr {
-  op: TACOp;
-  // 3-address slots
-  result?: string;        // destino
-  arg1?: TACValue;        // fonte 1
-  arg2?: TACValue;        // fonte 2
-  // extras
-  relop?: "==" | "!=" | "<" | "<=" | ">" | ">=";
-  label?: string;
-  target?: string;        // para ifgoto/goto
-  func?: string;          // nome função/procedimento
-  argc?: number;          // número de parâmetros
-  comment?: string;
-}
+import type { IfFrame, TACInstr, TACOp, Token, WhileFrame } from "./types";
 
 class TempGen {
   private c = 0;
@@ -33,22 +7,6 @@ class TempGen {
 class LabelGen {
   private c = 0;
   next() { this.c++; return `L${this.c}`; }
-}
-
-// Moldura de if/else
-interface IfFrame {
-  lTrue: string;
-  lFalse: string;
-  lEnd: string;
-  // Para saber se ELSE foi aberto:
-  hasElse: boolean;
-}
-
-// Moldura de while
-interface WhileFrame {
-  lTest: string;
-  lBody: string;
-  lEnd: string;
 }
 
 export class TACProgram {
