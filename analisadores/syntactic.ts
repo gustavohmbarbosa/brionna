@@ -17,16 +17,18 @@ export class SyntacticParser {
   private formalDepth = 0;
 
   // rastreamento do tipo de bloco para saber quando sair de while/if/func/proc
-  private blockKindStack: Array<"func" | "proc" | "if" | "while" | null> = [];
+  private blockKindStack: Array<"func" | "proc" | "if-then" | "if-else" | "while" | null> = [];
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
     this.currentToken = this.tokens[0];
 
     const tokAt = (i: number) => this.tokens[i]; // acesso absoluto usado pelos observadores
+    const getTokens = () => this.tokens;
+  const getPos = () => this.pos;
     this.sem = new SemanticObserver(tokAt);
 
-    this.codegen = new CodegenObserver(tokAt);
+    this.codegen = new CodegenObserver(tokAt, getTokens, getPos);
   }
 
 
@@ -205,41 +207,36 @@ export class SyntacticParser {
           // ELSE — abre ramo else no gerador
           if (top === "ELSE") {
             this.codegen.beginElseBlock();
+            // converte topo 'if-then' -> 'if-else'
+            for (let i = this.blockKindStack.length - 1; i >= 0; i--) {
+              if (this.blockKindStack[i] === "if-then") { this.blockKindStack[i] = "if-else"; break; }
+              if (this.blockKindStack[i] === "while" || this.blockKindStack[i] === "func" || this.blockKindStack[i] === "proc") break;
+            }
           }
 
           // abertura de bloco '{'
           if (top === "LBRACE") {
-            const kind = this.classifyHeaderBeforeLBrace(this.pos);
+            const kind0 = this.classifyHeaderBeforeLBrace(this.pos);
 
-            // ao abrir corpo de função/procedimento, "fixar" a assinatura antes do corpo
-            if (kind === "func") {
-              this.sem.commitFuncBeforeBody();
-              this.codegen.commitFuncBeforeBody();
-            } else if (kind === "proc") {
-              this.sem.commitProcBeforeBody();
-              this.codegen.commitProcBeforeBody();
-            }
+            if (kind0 === "func") { this.sem.commitFuncBeforeBody(); this.codegen.commitFuncBeforeBody(); }
+            else if (kind0 === "proc") { this.sem.commitProcBeforeBody(); this.codegen.commitProcBeforeBody(); }
 
-            // abrir novo escopo
             this.sem.onLBRACE();
             this.codegen.onLBRACE();
-
-            // injetar parâmetros formais no escopo (semântico) — no codegen é no-op
             this.sem.injectParamsToScope();
             this.codegen.injectParamsToScope();
 
-            // rastrear o tipo de bloco
-            this.blockKindStack.push(kind ?? null);
+            // if após RPAREN pertence ao THEN
+            const kind: typeof this.blockKindStack[number] =
+              (kind0 === "if" ? "if-then" :
+              kind0 === "while" ? "while" :
+              kind0 === "func" ? "func" :
+              kind0 === "proc" ? "proc" : null);
 
-            // marcas de entrada em bloco específico
-            if (kind === "if") {
-              // rótulo do bloco then
-              this.codegen.enterIfThenBlock();
-            } else if (kind === "while") {
-              // marca entrada do corpo do laço
-              this.sem.onWhileEnter();
-              this.codegen.enterWhileBody();
-            }
+            this.blockKindStack.push(kind);
+
+            if (kind === "if-then") this.codegen.enterIfThenBlock();
+            if (kind === "while")  { this.sem.onWhileEnter(); this.codegen.enterWhileBody(); }
           }
 
           // fechamento de bloco '}'
@@ -248,21 +245,15 @@ export class SyntacticParser {
             this.codegen.onRBRACE();
 
             const kind = this.blockKindStack.pop() ?? null;
-            if (kind === "while") {
-              // saída do laço
-              this.sem.onWhileExit();
-              // codegen já fecha while em onRBRACE
-            } else if (kind === "if") {
-              // finaliza estrutura if/else (emite label de fim quando há else)
+            if (kind === "while") { this.sem.onWhileExit(); }
+            else if (kind === "if-else") {
+              // fecha o if-else agora (label lEnd)
               this.codegen.endIfAll();
-            } else if (kind === "func") {
-              // fechamento do corpo de função
-              this.codegen.endFNbody();
-            } else if (kind === "proc") {
-              // fechamento do corpo de procedimento
-              this.codegen.endPROCbody();
             }
+            else if (kind === "func") { this.codegen.endFNbody(); }
+            else if (kind === "proc") { this.codegen.endPROCbody(); }
           }
+          
 
           // ATRIBUIÇÃO
           if (top === "ASSIGN") {
@@ -280,8 +271,8 @@ export class SyntacticParser {
           }
 
           // BREAK/CONTINUE (checagem semântica imediata)
-          if (top === "BREAK")    this.sem.onBREAK(tk);
-          if (top === "CONTINUE") this.sem.onCONTINUE(tk);
+          if (top === "BREAK")    { this.sem.onBREAK(tk);    this.codegen.onBREAK(tk); }
+          if (top === "CONTINUE") { this.sem.onCONTINUE(tk); this.codegen.onCONTINUE(tk); }
 
           // chamada de procedimento como comando (ID '(' ... ')' ';')
           if (top === "ID" && next?.type === "LPAREN") {
@@ -328,7 +319,7 @@ export class SyntacticParser {
 
       writeFileSync("resultado/code.txt", "", { encoding: "utf-8" });
       writeFileSync("resultado/code.txt", tac.toString(), { encoding: "utf-8" });
-      console.log("Código de 3 endereços salvo em resultado_TAC.txt");
+      console.log("Código de 3 endereços salvo em resultado/code.txt");
 
       return true;
     }

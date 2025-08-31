@@ -53,6 +53,8 @@ export class CodegenObserver {
 
   // Para o parser nos indicar como ler tokens/posições
   private tokAt: (i: number) => Token | undefined;
+  private getTokens: () => Token[];
+  private getPos: () => number;
 
   // Expressão corrente (a ser fechada em ';' ou ')')
   private exprMode: null | {
@@ -74,8 +76,12 @@ export class CodegenObserver {
 
   constructor(
     tokAt: (i: number) => Token | undefined,
+    getTokens: () => Token[],
+    getPos: () => number
   ) {
     this.tokAt = tokAt;
+    this.getTokens = getTokens;
+    this.getPos = getPos;
   }
 
   /* =========== API para o mundo externo =========== */
@@ -233,14 +239,10 @@ export class CodegenObserver {
     if (this.ifStack.length) {
       const top = this.ifStack[this.ifStack.length - 1];
       if (!top.hasElse) {
-        // Fechou o bloco THEN sem else:
+        // if sem else: só precisa do rótulo do false (queda para o fluxo normal)
         this.emit({ op: "label", label: top.lFalse });
-        this.emit({ op: "label", label: top.lEnd });
         this.ifStack.pop();
         return;
-      } else {
-        // Se saímos de um bloco ELSE e chegamos aqui, já havíamos marcado end.
-        // Nada a fazer neste hook.
       }
     }
     // fechamento de WHILE: quando o RBRACE for do corpo do while, voltamos ao teste e rotulamos end
@@ -316,11 +318,34 @@ export class CodegenObserver {
 
   // chamada de procedimento em forma de comando (stmt-terminada por ';')
   startProcCallStmt(nameTok: Token) {
-    // Nada ainda — a gente consome no fechamento do ')', mas como o parser
-    // não chama aqui, tratamos no shunting yard quando ver ID '(' ... ')'
-    // em contexto de statement. Para garantir, não fazemos nada especial.
-    // (Se quiser forçar, poderíamos checar no fechamento do ';' anterior.)
-    // Dica: já está coberto por evalFunctionCallToPlace para funções.
+    // ponto atual do parser é exatamente no ID
+  const pos = this.getPos(); // índice do ID (nome do procedimento)
+  const idTok = this.tokAt(pos)!;
+  const lp = this.tokAt(pos + 1);
+  if (!lp || lp.type !== "LPAREN") {
+    this.err("esperado '(' após nome de procedimento", lp ?? idTok);
+  }
+
+  // Coleta args e emite param/param/.../call (sem result)
+  let i = pos + 2; // após '('
+  let argc = 0;
+  if (this.tokAt(i)?.type !== "RPAREN") {
+    let keep = true;
+    while (keep) {
+      const { place, endPos } = this.evalExprToPlace(i, "COMMA");
+      this.emit({ op: "param", arg1: place });
+      argc++;
+      i = endPos;
+      if (this.tokAt(i)?.type === "COMMA") { i++; keep = true; } else keep = false;
+    }
+  }
+  const rp = this.tokAt(i);
+  if (!rp || rp.type !== "RPAREN") this.err("')' esperado ao final da chamada de procedimento", rp ?? this.tokAt(i - 1));
+
+  // chamada sem resultado
+  this.emit({ op: "call", func: idTok.value, argc });
+
+  // não mudamos o parser; só lemos adiantado para emitir
   }
 
   // IF ( ... ) { ... } [ else { ... } ]
@@ -413,5 +438,17 @@ export class CodegenObserver {
     }
 
     this.exprMode = null;
+  }
+
+  public onBREAK(tk: Token) {
+    const top = this.whileStack[this.whileStack.length - 1];
+    if (!top) this.err("'break' fora de laço", tk);
+    this.emit({ op: "goto", target: top.lEnd });
+  }
+
+  public onCONTINUE(tk: Token) {
+    const top = this.whileStack[this.whileStack.length - 1];
+    if (!top) this.err("'continue' fora de laço", tk);
+    this.emit({ op: "goto", target: top.lTest });
   }
 }
