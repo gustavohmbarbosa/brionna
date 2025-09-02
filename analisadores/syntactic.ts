@@ -284,7 +284,7 @@ export class SyntacticParser {
             const rparenPos = this.findMatchingRParen(this.pos + 1);
             const followsSemi = rparenPos !== null && this.tokens[rparenPos + 1]?.type === "SEMI";
             if (prevIsCmdBoundary && !isDeclHeader && followsSemi) {
-              this.sem.startProcCallStmt(tk);
+              this.sem.startProcCallStmt(tk, this.pos); // <- passa o índice do ID
               this.codegen.startProcCallStmt(tk);
             }
           }

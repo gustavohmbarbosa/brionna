@@ -163,7 +163,7 @@ export class SemanticObserver {
         while (ops.length && prec(ops[ops.length - 1]) >= prec(tk.type)) {
           apply({ type: ops.pop() as any, value: "", position: tk.position } as Token);
         }
-        ops.push(tk.type === "REL_OP" ? "REL_OP" : tk.type);
+        ops.push(tk.type);
         i++; continue;
       }
 
@@ -279,10 +279,66 @@ export class SemanticObserver {
       }
     };
   }
-  startProcCallStmt(nameTok: Token) {
+
+  private evalProcCallFrom(pos: number): { endPos: number } {
+    const idTok = this._tokAt(pos)!;
+    const calSym = this.st.lookup(idTok.value);
+    if (!calSym) this.semError(`identificador '${idTok.value}' não declarado`, idTok);
+    if (calSym!.kind !== "procedure") this.semError(`'${idTok.value}' não é procedimento`, idTok);
+
+    const lp = this._tokAt(pos + 1);
+    if (!lp || lp.type !== "LPAREN") {
+      this.semError("chamada de procedimento inválida (esperado '(')", this._tokAt(pos + 1));
+    }
+
+    const params = calSym!.params ?? [];
+    const argTypes: TypeName[] = [];
+
+    // lê argumentos entre '(' ... ')', usando o mesmo avaliador de expressões
+    let i = pos + 2; // primeiro token após '('
+    if (this._tokAt(i)?.type !== "RPAREN") {
+      let keep = true;
+      while (keep) {
+        const { type, endPos } = this.evalExprTypeFrom(i, "COMMA");
+        argTypes.push(type);
+        i = endPos;
+        if (this._tokAt(i)?.type === "COMMA") { i++; keep = true; }
+        else keep = false;
+      }
+    }
+
+    const rp = this._tokAt(i);
+    if (!rp || rp.type !== "RPAREN") {
+      this.semError("')' esperado ao final da chamada de procedimento", rp ?? this._tokAt(i - 1));
+    }
+
+    // aridade
+    if (params.length !== argTypes.length) {
+      this.semError(
+        `chamada a '${calSym!.name}' com ${argTypes.length} args; esperado ${params.length}`,
+        rp
+      );
+    }
+
+    // tipos
+    for (let k = 0; k < params.length; k++) {
+      if (params[k].type !== argTypes[k]) {
+        this.semError(
+          `argumento #${k + 1} de '${calSym!.name}' incompatível. Esperado ${params[k].type}, obtido ${argTypes[k]}`,
+          this._tokAt(pos) // aponta pro ID do proc
+        );
+      }
+    }
+
+    return { endPos: i + 1 }; // posição após ')'
+  }
+
+  startProcCallStmt(nameTok: Token, idIndex: number) {
     const sym = this.st.lookup(nameTok.value);
     if (!sym) this.semError(`identificador '${nameTok.value}' não declarado`, nameTok);
     if (sym!.kind !== "procedure") this.semError(`'${nameTok.value}' não é procedimento`, nameTok);
+
+    this.evalProcCallFrom(idIndex);
   }
 
   onBREAK(tok: Token) {

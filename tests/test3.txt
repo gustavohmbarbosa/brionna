@@ -1,5 +1,5 @@
 fn main() {
-    fn fib: int (n: int, a: bool) {
+    fn fib: int (n: int, a: int) {
         let b: int;
         let tmp, i: int;
         a = 0;
@@ -12,7 +12,7 @@ fn main() {
             i = i + 1;
         }
 
-        if (x < 0) {
+        if (b < 0) {
 
         }
 
